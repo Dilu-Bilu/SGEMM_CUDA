@@ -20,7 +20,9 @@ __global__ void sgemm_naive(int M, int N, int K, float alpha, const float *A, co
     if (x < M && y < N) {
         float temp = 0.0;
         for (int i=0; i < K; i++) {
-            
+            temp += A[x*K + i] * B[i*N+y];
         }
-    }
-} 
+        C[x*N + y] = alpha + temp + beta * C[x*N+y]; 
+    } 
+}
+    
