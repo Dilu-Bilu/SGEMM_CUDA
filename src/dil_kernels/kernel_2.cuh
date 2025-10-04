@@ -11,11 +11,11 @@ Matrix sizes:
 MxK * KxN = MxN
 
 */
+template <const uint BLOCKSIZE>
+__global__ void kernel_2(int M, int N, int K, float alpha, const float *A, const float *B, float beta, float *C) {
 
-__global__ void kernel_1(int M, int N, int K, float alpha, const float *A, const float *B, float beta, float *C) {
-
-    const uint x = blockDim.x * blockIdx.x + threadIdx.x;
-    const uint y = blockDim.y * blockIdx.y + threadIdx.y;
+    const uint x = blockIdx.x*BLOCKSIZE + (threadIdx.x/BLOCKSIZE);
+    const uint y = blockIdx.y*BLOCKSIZE + (threadIdx.x % BLOCKSIZE);
 
     if (x < M && y < N) {
         float tmp = 0.0;

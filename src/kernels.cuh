@@ -15,3 +15,5 @@
 
 // These are the custom hand-written kernels by Dilreet 
 #include "dil_kernels/kernel_1.cuh"
+#include "dil_kernels/kernel_2.cuh"
+#include "dil_kernels/kernel_3.cuh"

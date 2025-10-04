@@ -156,11 +156,26 @@ void run_sgemm_naive(int M, int N, int K, float alpha, float *A, float *B,
   sgemm_naive<<<gridDim, blockDim>>>(M, N, K, alpha, A, B, beta, C);
 }
 
+void run_sgemm_naive_dil(int M, int N, int K, float alpha, float *A, float *B,
+                     float beta, float *C) {
+  dim3 gridDim(CEIL_DIV(M, 32), CEIL_DIV(N, 32));
+  dim3 blockDim(32, 32);
+  kernel_1<<<gridDim, blockDim>>>(M, N, K, alpha, A, B, beta, C);
+}
+
 void run_sgemm_coalesce(int M, int N, int K, float alpha, float *A, float *B,
                         float beta, float *C) {
   dim3 gridDim(CEIL_DIV(M, 32), CEIL_DIV(N, 32));
   dim3 blockDim(32 * 32);
   sgemm_global_mem_coalesce<32>
+      <<<gridDim, blockDim>>>(M, N, K, alpha, A, B, beta, C);
+}
+
+void run_sgemm_coalesce_dil(int M, int N, int K, float alpha, float *A, float *B,
+                        float beta, float *C) {
+  dim3 gridDim(CEIL_DIV(M, 32), CEIL_DIV(N, 32));
+  dim3 blockDim(32 * 32);
+  kernel_2<32>
       <<<gridDim, blockDim>>>(M, N, K, alpha, A, B, beta, C);
 }
 
@@ -175,6 +190,20 @@ void run_sgemm_shared_mem_block(int M, int N, int K, float alpha, float *A,
                        cudaFuncAttributePreferredSharedMemoryCarveout,
                        cudaSharedmemCarveoutMaxShared);
   sgemm_shared_mem_block<32>
+      <<<gridDim, blockDim>>>(M, N, K, alpha, A, B, beta, C);
+}
+
+void run_sgemm_shared_mem_block_dil(int M, int N, int K, float alpha, float *A,
+                                float *B, float beta, float *C) {
+  dim3 gridDim(CEIL_DIV(M, 32), CEIL_DIV(N, 32));
+  dim3 blockDim(32 * 32);
+  // L1 cache becomes useless, since we access GMEM only via SMEM, so we carve
+  // out all of L1 to SMEM. This doesn't currently make a difference, since
+  // occupancy is limited by reg and thread count, but it's good to do anyway.
+  cudaFuncSetAttribute(kernel_3<32>,
+                       cudaFuncAttributePreferredSharedMemoryCarveout,
+                       cudaSharedmemCarveoutMaxShared);
+  kernel_3<32>
       <<<gridDim, blockDim>>>(M, N, K, alpha, A, B, beta, C);
 }
 
@@ -543,6 +572,15 @@ void run_kernel(int kernel_num, int M, int N, int K, float alpha, float *A,
   case 12:
     runSgemmDoubleBuffering2(M, N, K, alpha, A, B, beta, C);
     break;
+  case 13:
+    run_sgemm_naive_dil(M, N, K, alpha, A, B, beta, C);
+    break; 
+  case 14:
+    run_sgemm_coalesce_dil(M, N, K, alpha, A, B, beta, C);
+    break; 
+  case 15:
+    run_sgemm_shared_mem_block_dil(M, N, K, alpha, A, B, beta, C);
+    break; 
   default:
     throw std::invalid_argument("Unknown kernel number");
   }
